@@ -10,8 +10,9 @@ jobs:
     steps:
       - name: Restart bot (pulls latest code)
         run: |
-          curl -sf -X POST "${{ secrets.PANEL_URL }}/api/client/servers/${{ secrets.SERVER_ID }}/power" \
+          curl -sS --fail-with-body -X POST "${{ secrets.PANEL_URL }}/api/client/servers/${{ secrets.SERVER_ID }}/power" \
             -H "Authorization: Bearer ${{ secrets.PANEL_API_KEY }}" \
             -H "Content-Type: application/json" \
             -H "Accept: application/json" \
-            -d '{"signal":"restart"}'
+            -d '{"signal":"restart"}' \
+            -w "\nHTTP status: %{http_code}\n"
