@@ -1,6 +1,7 @@
 const { PermissionFlagsBits, SlashCommandBuilder, EmbedBuilder, MessageFlags, InteractionContextType } = require('discord.js');
 const { sendModLog } = require('../../utils/modlog');
 const { checkModerationHierarchy } = require('../../utils/permissions');
+const { createCase, caseLabel } = require('../../utils/cases');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -45,7 +46,8 @@ module.exports = {
             return interaction.editReply({ content: 'Failed to kick the user. Do I have permissions?' });
         }
 
-        await interaction.editReply(`Successfully **kicked** ${target.username} 💖`);
+        const modCase = await createCase({ guild: interaction.guild, action: 'kick', user: target, moderator: interaction.user, reason });
+        await interaction.editReply(`Successfully **kicked** ${target.username} 💖` + (modCase ? `\n-# ${caseLabel(modCase)}` : ''));
 
         const embed = new EmbedBuilder()
             .setTitle('👢 User kicked')
@@ -56,6 +58,7 @@ module.exports = {
                 { name: 'Moderator', value: `<@${interaction.user.id}>`, inline: false }
             )
             .setTimestamp();
+        if (modCase) embed.setFooter({ text: caseLabel(modCase) });
 
         await sendModLog(interaction.guild, embed);
     },

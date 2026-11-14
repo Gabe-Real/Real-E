@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js');
 const ms = require('ms');
 const ModLog = require('../../schemas/logging/modlogs');
+const { createCase, caseLabel } = require('../../utils/cases');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -75,8 +76,9 @@ module.exports = {
                 .catch(() => null);
 
             // Reply first so the interaction is always answered, even if the modlog lookup is slow.
+            const modCase = await createCase({ guild: interaction.guild, action: 'mute', user: targetUser, moderator: interaction.user, reason, duration: timeStr });
             await interaction.reply({
-                content: `Successfully **muted** ${targetUser.username} for ${timeStr} 💖`,
+                content: `Successfully **muted** ${targetUser.username} for ${timeStr} 💖` + (modCase ? `\n-# ${caseLabel(modCase)}` : ''),
                 allowedMentions: { users: [] }
             });
 
@@ -90,6 +92,7 @@ module.exports = {
                     { name: 'Moderator', value: `<@${interaction.user.id}>`, inline: false }
                 )
                 .setTimestamp();
+            if (modCase) embed.setFooter({ text: caseLabel(modCase) });
 
             await sendModLog(embed);
         }
@@ -105,8 +108,9 @@ module.exports = {
                 .send(`You were unmuted in **${interaction.guild.name}**.`)
                 .catch(() => null);
 
+            const modCase = await createCase({ guild: interaction.guild, action: 'unmute', user: targetUser, moderator: interaction.user, reason: 'Manual unmute' });
             await interaction.reply({
-                content: `Successfully **unmuted** ${targetUser.username}. 💖`,
+                content: `Successfully **unmuted** ${targetUser.username}. 💖` + (modCase ? `\n-# ${caseLabel(modCase)}` : ''),
                 allowedMentions: { users: [] }
             });
 
@@ -118,6 +122,7 @@ module.exports = {
                     { name: 'Moderator', value: `<@${interaction.user.id}>`, inline: false }
                 )
                 .setTimestamp();
+            if (modCase) embed.setFooter({ text: caseLabel(modCase) });
 
             await sendModLog(embed);
         }

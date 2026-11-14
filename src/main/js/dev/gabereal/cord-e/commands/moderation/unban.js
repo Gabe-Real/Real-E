@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags, InteractionContextType } = require('discord.js');
 const { sendModLog } = require('../../utils/modlog');
 const { cancelUnban } = require('../../utils/tempBans');
+const { createCase, caseLabel } = require('../../utils/cases');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -41,7 +42,11 @@ module.exports = {
         // Best-effort: usually fails, since an unbanned user rarely shares a server with the bot.
         await banInfo.user.send(`You have been unbanned from **${guild.name}**.\n**Reason:** ${reason}`).catch(() => null);
 
-        await interaction.reply({ content: `Successfully **unbanned** <@${userId}>. They are now free to join back 💖`, allowedMentions: { parse: [] } });
+        const modCase = await createCase({ guild, action: 'unban', user: banInfo.user, moderator: interaction.user, reason });
+        await interaction.reply({
+            content: `Successfully **unbanned** <@${userId}>. They are now free to join back 💖` + (modCase ? `\n-# ${caseLabel(modCase)}` : ''),
+            allowedMentions: { parse: [] },
+        });
 
         const embed = new EmbedBuilder()
             .setTitle('🔓 User Unbanned')
@@ -52,6 +57,7 @@ module.exports = {
                 { name: 'Moderator', value: `<@${interaction.user.id}>`, inline: false }
             )
             .setTimestamp();
+        if (modCase) embed.setFooter({ text: caseLabel(modCase) });
 
         await sendModLog(guild, embed);
     }

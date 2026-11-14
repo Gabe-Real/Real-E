@@ -1,4 +1,5 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags, InteractionContextType, EmbedBuilder, Colors } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags, InteractionContextType } = require('discord.js');
+const { text, divider, v2, notice } = require('../../utils/ui');
 const NotifySubscription = require('../../schemas/notify/notifySubscription');
 const { fetchFeed, resolveChannelId } = require('../../utils/youtube');
 const { twitchConfigured, getUser, getLiveStreams } = require('../../utils/twitch');
@@ -155,21 +156,24 @@ async function remove(interaction) {
 
 async function list(interaction) {
     const subs = await NotifySubscription.find({ guildId: interaction.guildId }).sort({ platform: 1, sourceName: 1 });
-    if (!subs.length) return interaction.editReply('No alerts set up yet. Add one with `/notify add`.');
+    if (!subs.length) {
+        return interaction.editReply(notice('📭 No alerts set up yet', 'Add one with `/notify add`'));
+    }
 
-    const lines = subs.map(s => {
-        const ping = !s.roleId ? '' : s.roleId === interaction.guildId ? ' · pings @everyone' : ` · pings <@&${s.roleId}>`;
-        const emoji = s.platform === 'youtube' ? '📺' : '🟣';
-        return `${emoji} **${s.sourceName}** → <#${s.discordChannelId}>${ping}${s.message ? ' · custom message' : ''}`;
-    });
+    const block = (platform, emoji) => {
+        const lines = subs.filter(s => s.platform === platform).map(s => {
+            const ping = !s.roleId ? '' : s.roleId === interaction.guildId ? ' · pings @everyone' : ` · pings <@&${s.roleId}>`;
+            return `**${s.sourceName}** → <#${s.discordChannelId}>${ping}${s.message ? ' · custom message' : ''}`;
+        });
+        return lines.length ? text(`### ${emoji} ${PLATFORM_LABEL[platform]}\n${lines.join('\n')}`) : null;
+    };
 
-    const embed = new EmbedBuilder()
-        .setTitle(`Alerts in ${interaction.guild.name}`)
-        .setDescription(lines.join('\n').slice(0, 4000))
-        .setFooter({ text: `${subs.length}/${MAX_PER_SERVER} used` })
-        .setColor(Colors.Blurple);
-
-    return interaction.editReply({ embeds: [embed] });
+    return interaction.editReply(v2([
+        text(`## 🔔 Alerts in ${interaction.guild.name}\n-# ${subs.length}/${MAX_PER_SERVER} used`),
+        divider(),
+        block('youtube', '📺'),
+        block('twitch', '🟣'),
+    ].filter(Boolean)));
 }
 
 async function test(interaction) {

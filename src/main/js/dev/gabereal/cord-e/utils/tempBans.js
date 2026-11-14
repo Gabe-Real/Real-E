@@ -1,5 +1,6 @@
 const TempBan = require('../schemas/moderation/tempban');
 const { logModAction } = require('./modlog');
+const { createCase } = require('./cases');
 
 const CHECK_INTERVAL_MS = 60 * 1000;
 const UNKNOWN_BAN = 10026;
@@ -29,6 +30,10 @@ async function processDueUnbans(client) {
                 console.log(`Unbanned ${entry.userTag ?? entry.userId} in ${guild.id} after temporary ban.`);
 
                 const user = await client.users.fetch(entry.userId).catch(() => null);
+                const modCase = await createCase({
+                    guild, action: 'unban', user: user ?? { id: entry.userId, tag: entry.userTag ?? 'Unknown user' },
+                    moderator: client.user, reason: 'Temporary ban expired (auto)',
+                });
                 await logModAction({
                     guild,
                     colour: 'Green',
@@ -37,6 +42,7 @@ async function processDueUnbans(client) {
                     emoji: '🔓',
                     action: 'User Unbanned',
                     reason: 'Temporary ban expired.',
+                    extraFields: modCase ? [{ name: 'Case', value: `#${modCase.caseId}`, inline: true }] : [],
                 });
             }
         } catch (err) {

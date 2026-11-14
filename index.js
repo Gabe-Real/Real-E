@@ -268,6 +268,19 @@ client.on(Events.InteractionCreate, async interaction => {
 
     if (interaction.isButton()) {
         const [prefix, roleId] = interaction.customId.split(':');
+
+        // Buttons whose custom ID starts with a command name (e.g. "history:...") belong to that command.
+        const owner = interaction.client.commands.get(prefix);
+        if (owner?.handleButton) {
+            try {
+                await owner.handleButton(interaction);
+            } catch (err) {
+                console.error(`[button:${prefix}]`, err);
+                await replyWithError(interaction);
+            }
+            return;
+        }
+
         if (prefix !== 'rr' || !interaction.inGuild()) return;
 
         try {

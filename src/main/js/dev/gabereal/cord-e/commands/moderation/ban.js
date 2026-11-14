@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags, In
 const { sendModLog } = require('../../utils/modlog');
 const { checkModerationHierarchy } = require('../../utils/permissions');
 const { scheduleUnban, cancelUnban } = require('../../utils/tempBans');
+const { createCase, caseLabel } = require('../../utils/cases');
 
 function parseDuration(str) {
     const regex = /^(\d+)(s|m|h|d|y)?$/i;
@@ -84,8 +85,15 @@ module.exports = {
         if (durationMs) await scheduleUnban({ guildId: guild.id, user: target, moderatorId: interaction.user.id, durationMs });
         else await cancelUnban(guild.id, target.id); // re-banning permanently overrides an earlier temp ban
 
+        const evidence = image && /^https?:\/\/\S+$/i.test(image) ? image : undefined;
+        const modCase = await createCase({
+            guild, action: durationMs ? 'tempban' : 'ban', user: target, moderator: interaction.user,
+            reason, duration: durationMs ? timeStr : undefined, evidence,
+        });
+
         await interaction.editReply({
-            content: `Successfully **banned** ${target.username}. ${durationMs ? `They will be unbanned in ${timeStr}` : 'This ban is permanent'} 💖`,
+            content: `Successfully **banned** ${target.username}. ${durationMs ? `They will be unbanned in ${timeStr}` : 'This ban is permanent'} 💖` +
+                (modCase ? `\n-# ${caseLabel(modCase)}` : ''),
         });
 
         const embed = new EmbedBuilder()
@@ -98,7 +106,8 @@ module.exports = {
                 { name: 'Moderator', value: `<@${interaction.user.id}>`, inline: true }
             )
             .setTimestamp();
-        if (image && /^https?:\/\/\S+$/i.test(image)) embed.setImage(image);
+        if (evidence) embed.setImage(evidence);
+        if (modCase) embed.setFooter({ text: caseLabel(modCase) });
 
         await sendModLog(guild, embed);
     }

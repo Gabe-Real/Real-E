@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags, In
 const Warn = require('../../schemas/moderation/warn');
 const WarnConfig = require('../../schemas/moderation/warnConfig');
 const { sendModLog } = require('../../utils/modlog');
+const { createCase, caseLabel } = require('../../utils/cases');
 
 const THRESHOLD_MUTE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -108,7 +109,10 @@ module.exports = {
             record.warnings.push({ reason, moderatorId });
             await record.save();
 
+            const modCase = await createCase({ guild: interaction.guild, action: 'warn', user, moderator: interaction.user, reason });
+
             await sendModLog(interaction.guild, new EmbedBuilder()
+                .setFooter(modCase ? { text: caseLabel(modCase) } : null)
                 .setTitle('⚠️ User Warned')
                 .setColor('Yellow')
                 .addFields(
@@ -134,6 +138,16 @@ module.exports = {
 
                 thresholdNote = `\nWarning threshold reached: ${outcome}.`;
 
+                // Record the automatic punishment as its own case, done by the bot.
+                const autoAction = { kick: 'kick', ban: 'ban', mute: 'mute' }[config.action];
+                if (member && autoAction && !outcome.includes('failed')) {
+                    const autoCase = await createCase({
+                        guild: interaction.guild, action: autoAction, user, moderator: interaction.client.user,
+                        reason: `Reached ${config.warningThreshold} warnings (auto)`, duration: autoAction === 'mute' ? '7d' : undefined,
+                    });
+                    if (autoCase) thresholdNote += ` (${caseLabel(autoCase)})`;
+                }
+
                 await sendModLog(interaction.guild, new EmbedBuilder()
                     .setTitle('🚨 Warning Threshold Reached')
                     .setColor('Red')
@@ -149,7 +163,7 @@ module.exports = {
             }
 
             return interaction.editReply({
-                content: `Successfully **warned** ${user.username}. 💖${thresholdNote}`,
+                content: `Successfully **warned** ${user.username}. 💖${thresholdNote}` + (modCase ? `\n-# ${caseLabel(modCase)}` : ''),
             });
         }
 
@@ -180,7 +194,14 @@ module.exports = {
                 return interaction.reply({ content: `No warnings found for ${user.tag}.`, flags: MessageFlags.Ephemeral });
             }
 
-            await interaction.reply({ content: `🧹 Cleared all warnings for ${user.tag}.`, flags: MessageFlags.Ephemeral });
+            const modCase = await createCase({
+                guild: interaction.guild, action: 'clearwarns', user, moderator: interaction.user,
+                reason: `Cleared ${result.warnings.length} warning${result.warnings.length === 1 ? '' : 's'}`,
+            });
+            await interaction.reply({
+                content: `🧹 Cleared all warnings for ${user.tag}.` + (modCase ? `\n-# ${caseLabel(modCase)}` : ''),
+                flags: MessageFlags.Ephemeral,
+            });
 
             await sendModLog(interaction.guild, new EmbedBuilder()
                 .setTitle('🧹 Warnings Cleared')
