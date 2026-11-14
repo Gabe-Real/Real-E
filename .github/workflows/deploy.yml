@@ -1,0 +1,17 @@
+name: Deploy to Cybrancee
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  restart:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restart bot (pulls latest code)
+        run: |
+          curl -sf -X POST "${{ secrets.PANEL_URL }}/api/client/servers/${{ secrets.SERVER_ID }}/power" \
+            -H "Authorization: Bearer ${{ secrets.PANEL_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -d '{"signal":"restart"}'
