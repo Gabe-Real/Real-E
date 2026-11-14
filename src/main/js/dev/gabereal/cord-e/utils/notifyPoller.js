@@ -8,8 +8,8 @@ const MAX_VIDEOS_PER_CHECK = 3;              // Never dump a whole backlog into 
 const MAX_VIDEO_AGE_MS = 2 * 24 * 60 * 60 * 1000;
 
 const DEFAULT_MESSAGES = {
-    youtube: '**{name}** just posted a new {type}: **{title}**\n{url}',
-    twitch: '**{name}** is now live on Twitch: **{title}**\n{url}',
+    youtube: '{url}',
+    twitch: '{url}',
 };
 
 function fillTemplate(template, values) {
