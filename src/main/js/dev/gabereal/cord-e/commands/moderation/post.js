@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, Colors, EmbedBuilder, ChannelType, MessageFlags, InteractionContextType } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, Colors, EmbedBuilder, ChannelType, MessageFlags, InteractionContextType, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const { canSendInChannel } = require('../../utils/permissions');
 
 const POSTABLE_CHANNELS = [ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.PublicThread, ChannelType.PrivateThread, ChannelType.AnnouncementThread];
@@ -11,68 +11,74 @@ const styleColors = {
     custom: Colors.White
 };
 
+/**
+ * Who the posted message is allowed to ping. Moderators without "Mention @everyone" can't use
+ * the bot to ping @everyone/@here or roles - otherwise /post would be a way around that permission.
+ */
+function allowedMentionsFor(member, channel) {
+    if (channel.permissionsFor(member)?.has(PermissionFlagsBits.MentionEveryone)) {
+        return { parse: ['users', 'roles', 'everyone'] };
+    }
+    return { parse: ['users'] };
+}
+
 module.exports = {
+    allowedMentionsFor,
+
     data: new SlashCommandBuilder()
         .setName('post')
         .setDescription('Make the bot say something.')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
         .setContexts(InteractionContextType.Guild)
         .addSubcommand(sub =>
-        sub.setName('message')
-            .setDescription('Post a message')
-            .addChannelOption(option =>
-                option.setName('channel')
-                    .setDescription('The channel to post to')
-                    .addChannelTypes(...POSTABLE_CHANNELS)
-                    .setRequired(true)
-            )
-            .addStringOption(option =>
-                option.setName('content')
-                    .setDescription('The message content to post')
-                    .setMaxLength(2000)
-                    .setRequired(true)
-            )
+            sub.setName('message')
+                .setDescription('Post a message (opens a text box)')
+                .addChannelOption(option =>
+                    option.setName('channel')
+                        .setDescription('The channel to post to (defaults to this channel)')
+                        .addChannelTypes(...POSTABLE_CHANNELS)
+                )
         )
         .addSubcommand(sub =>
-        sub.setName('embed')
-            .setDescription('Post an embed')
-            .addChannelOption(option =>
-                option.setName('channel')
-                    .setDescription('The channel to post to (defaults to this channel)')
-                    .addChannelTypes(...POSTABLE_CHANNELS)
-            )
-            .addStringOption(option =>
-                option.setName('style')
-                    .setDescription('Choose a style preset')
-                    .addChoices(
-                        { name: 'Info', value: 'info' },
-                        { name: 'Success', value: 'success' },
-                        { name: 'Warning', value: 'warning' },
-                        { name: 'Error', value: 'error' },
-                        { name: 'Custom', value: 'custom' }
-                    )
-            )
-            .addStringOption(option =>
-                option.setName('title').setDescription('Title of the embed').setMaxLength(256)
-            )
-            .addStringOption(option =>
-                option.setName('description').setDescription('Description text').setMaxLength(4000)
-            )
-            .addStringOption(option =>
-                option.setName('color').setDescription('Hex color (e.g., #3498db)').setMaxLength(7)
-            )
-            .addStringOption(option =>
-                option.setName('thumbnail').setDescription('Thumbnail image URL')
-            )
-            .addStringOption(option =>
-                option.setName('image').setDescription('Main image URL')
-            )
-            .addBooleanOption(option =>
-                option.setName('timestamp').setDescription('Add a timestamp?')
-            )
-            .addStringOption(option =>
-                option.setName('footer').setDescription('Footer text').setMaxLength(2048)
-            )
+            sub.setName('embed')
+                .setDescription('Post an embed')
+                .addChannelOption(option =>
+                    option.setName('channel')
+                        .setDescription('The channel to post to (defaults to this channel)')
+                        .addChannelTypes(...POSTABLE_CHANNELS)
+                )
+                .addStringOption(option =>
+                    option.setName('style')
+                        .setDescription('Choose a style preset')
+                        .addChoices(
+                            { name: 'Info', value: 'info' },
+                            { name: 'Success', value: 'success' },
+                            { name: 'Warning', value: 'warning' },
+                            { name: 'Error', value: 'error' },
+                            { name: 'Custom', value: 'custom' }
+                        )
+                )
+                .addStringOption(option =>
+                    option.setName('title').setDescription('Title of the embed').setMaxLength(256)
+                )
+                .addStringOption(option =>
+                    option.setName('description').setDescription('Description text').setMaxLength(4000)
+                )
+                .addStringOption(option =>
+                    option.setName('color').setDescription('Hex color (e.g., #3498db)').setMaxLength(7)
+                )
+                .addStringOption(option =>
+                    option.setName('thumbnail').setDescription('Thumbnail image URL')
+                )
+                .addStringOption(option =>
+                    option.setName('image').setDescription('Main image URL')
+                )
+                .addBooleanOption(option =>
+                    option.setName('timestamp').setDescription('Add a timestamp?')
+                )
+                .addStringOption(option =>
+                    option.setName('footer').setDescription('Footer text').setMaxLength(2048)
+                )
         ),
 
     async execute(interaction) {
@@ -86,12 +92,25 @@ module.exports = {
         }
 
         if (sub === 'message') {
-            const message = interaction.options.getString('content');
+            // Open a pop-up text box. The target channel's ID rides along in the modal's custom ID,
+            // and handlers/modals/postMessage.js does the actual posting when it's submitted.
+            const modal = new ModalBuilder()
+                .setCustomId(`post:message:${channel.id}`)
+                .setTitle(`Post in #${channel.name}`.slice(0, 45));
 
-            await channel.send(message);
-            await interaction.reply({ content: `Done!`, flags: MessageFlags.Ephemeral });
+            const contentInput = new TextInputBuilder()
+                .setCustomId('post_content')
+                .setLabel('Message')
+                .setStyle(TextInputStyle.Paragraph)
+                .setPlaceholder('What should the bot say? Markdown, emojis and new lines all work.')
+                .setMaxLength(2000)
+                .setRequired(true);
 
-        } else if (sub === 'embed') {
+            modal.addComponents(new ActionRowBuilder().addComponents(contentInput));
+            return interaction.showModal(modal);
+        }
+
+        if (sub === 'embed') {
             const style = interaction.options.getString('style') ?? 'info';
             const title = interaction.options.getString('title');
             const description = interaction.options.getString('description');
@@ -121,8 +140,16 @@ module.exports = {
             if (timestamp) embed.setTimestamp();
             if (footer) embed.setFooter({ text: footer });
 
-            await channel.send({ embeds: [embed] });
-            await interaction.reply({ content: 'Done!', flags: MessageFlags.Ephemeral });
+            // Acknowledge first: Discord only gives us 3 seconds to respond, and sending to the
+            // channel can take longer than that (which caused "Unknown interaction" errors).
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            try {
+                await channel.send({ embeds: [embed], allowedMentions: allowedMentionsFor(interaction.member, channel) });
+                await interaction.editReply(`Posted in ${channel}.`);
+            } catch (err) {
+                console.error('[post embed]', err);
+                await interaction.editReply('I couldn\'t post there. Check I have permission to send messages and embed links in that channel.');
+            }
         }
     }
 };
