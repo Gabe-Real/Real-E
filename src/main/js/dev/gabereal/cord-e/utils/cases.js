@@ -48,13 +48,30 @@ function caseLabel(modCase) {
     return modCase ? `Case #${modCase.caseId}` : '';
 }
 
-/** One-line summary of a case, used in /history. */
-function formatCaseLine(modCase) {
+/** Summary of a case, used in /history and /case list. Pass showUser to include who it was against. */
+function formatCaseLine(modCase, { showUser = false } = {}) {
     const { emoji, label } = ACTIONS[modCase.action] ?? { emoji: '•', label: modCase.action };
     const when = `<t:${Math.floor(modCase.createdAt.getTime() / 1000)}:R>`;
     const duration = modCase.duration ? ` (${modCase.duration})` : '';
     const reason = modCase.reason.length > 80 ? `${modCase.reason.slice(0, 77)}...` : modCase.reason;
-    return `\`#${modCase.caseId}\` ${emoji} **${label}${duration}** · ${when} · by <@${modCase.moderatorId}>\n> ${reason}`;
+    const who = showUser ? ` · <@${modCase.userId}>` : '';
+    return `\`#${modCase.caseId}\` ${emoji} **${label}${duration}**${who} · ${when} · by <@${modCase.moderatorId}>\n> ${reason}`;
 }
 
-module.exports = { ACTIONS, createCase, caseLabel, formatCaseLine };
+/** Dropdown that opens any of the given cases as a private case card. */
+function caseSelectMenu(cases) {
+    const { ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+    return new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+            .setCustomId('case:open')
+            .setPlaceholder('🔎 Open a case...')
+            .addOptions(cases.slice(0, 25).map(c => ({
+                label: `#${c.caseId} · ${ACTIONS[c.action]?.label ?? c.action} · ${c.userTag ?? c.userId}`.slice(0, 100),
+                description: c.reason.slice(0, 100),
+                emoji: ACTIONS[c.action]?.emoji,
+                value: String(c.caseId),
+            })))
+    );
+}
+
+module.exports = { ACTIONS, createCase, caseLabel, formatCaseLine, caseSelectMenu };

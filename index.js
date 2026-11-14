@@ -222,7 +222,7 @@ async function handleRoleButton(interaction, roleId) {
 
 client.on(Events.InteractionCreate, async interaction => {
 
-    if (interaction.isChatInputCommand()) {
+    if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) {
         const command = interaction.client.commands.get(interaction.commandName);
         if (!command) {
             console.error(`No command matching ${interaction.commandName} was found.`);
@@ -266,14 +266,15 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
     }
 
-    if (interaction.isButton()) {
+    if (interaction.isButton() || interaction.isStringSelectMenu()) {
         const [prefix, roleId] = interaction.customId.split(':');
 
-        // Buttons whose custom ID starts with a command name (e.g. "history:...") belong to that command.
+        // Buttons/dropdowns whose custom ID starts with a command name (e.g. "history:...") belong to that command.
         const owner = interaction.client.commands.get(prefix);
-        if (owner?.handleButton) {
+        const handler = interaction.isButton() ? owner?.handleButton : owner?.handleSelect;
+        if (handler) {
             try {
-                await owner.handleButton(interaction);
+                await handler.call(owner, interaction);
             } catch (err) {
                 console.error(`[button:${prefix}]`, err);
                 await replyWithError(interaction);
@@ -281,7 +282,7 @@ client.on(Events.InteractionCreate, async interaction => {
             return;
         }
 
-        if (prefix !== 'rr' || !interaction.inGuild()) return;
+        if (!interaction.isButton() || prefix !== 'rr' || !interaction.inGuild()) return;
 
         try {
             await handleRoleButton(interaction, roleId);

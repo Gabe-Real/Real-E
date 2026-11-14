@@ -2,7 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType } = req
 const ModCase = require('../../schemas/moderation/case');
 const Warn = require('../../schemas/moderation/warn');
 const ModNote = require('../../schemas/moderation/notes');
-const { ACTIONS, formatCaseLine } = require('../../utils/cases');
+const { ACTIONS, formatCaseLine, caseSelectMenu } = require('../../utils/cases');
 const { text, divider, section, buttons, v2, notice } = require('../../utils/ui');
 
 const PER_PAGE = 6;
@@ -76,7 +76,8 @@ async function buildHistory(guild, user, page, options = {}) {
     const components = [
         section(`## 📂 ${user.username}'s history\n-# ${total} case${total === 1 ? '' : 's'}: ${summary}\n${extras}`, avatar),
         divider(),
-        text(cases.map(formatCaseLine).join('\n\n').slice(0, 3500)),
+        text(cases.map(c => formatCaseLine(c)).join('\n\n').slice(0, 3500)),
+        caseSelectMenu(cases),
     ];
 
     if (pages > 1) {
@@ -89,3 +90,5 @@ async function buildHistory(guild, user, page, options = {}) {
 
     return v2(components, options);
 }
+
+module.exports.buildHistory = buildHistory;
