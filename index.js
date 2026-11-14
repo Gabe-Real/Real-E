@@ -10,6 +10,7 @@ const MsglogConfig = require('./src/main/js/dev/gabereal/cord-e/schemas/logging/
 const { handleQuickTag } = require('./src/main/js/dev/gabereal/cord-e/handlers/commands/quickTags');
 const { startChristmasStatus } = require('./src/main/js/dev/gabereal/cord-e/handlers/events/christmasStatus');
 const { startTempBanWatcher } = require('./src/main/js/dev/gabereal/cord-e/utils/tempBans');
+const { startNotifyPoller } = require('./src/main/js/dev/gabereal/cord-e/utils/notifyPoller');
 
 
 // ENVIRONMENT VARIABLES
@@ -287,6 +288,7 @@ client.once(Events.ClientReady, c => {
     console.log(`Logged in as ${c.user.username}`);
     startChristmasStatus(c);
     startTempBanWatcher(c);
+    startNotifyPoller(c);
 });
 
 (async () => {
