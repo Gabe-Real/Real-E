@@ -6,7 +6,7 @@ const YOUTUBE_INTERVAL_MS = 5 * 60 * 1000;
 const TWITCH_INTERVAL_MS = 2 * 60 * 1000;
 const MAX_VIDEOS_PER_CHECK = 3;              // Never dump a whole backlog into a channel
 const MAX_VIDEO_AGE_MS = 2 * 24 * 60 * 60 * 1000;
-
+const feedFailures = new Map(); // channelId -> failed checks in a row
 const DEFAULT_MESSAGES = {
     youtube: '{url}',
     twitch: '{url}',
@@ -46,11 +46,14 @@ async function checkYouTube(client) {
         let feed;
         try {
             feed = await fetchFeed(channelId);
+            feedFailures.delete(channelId);
         } catch (err) {
-            console.error(`[notify] YouTube feed failed for ${channelId}:`, err.message);
+            // YouTube's feeds randomly 404 for a few minutes, so only complain if it keeps happening.
+            const fails = (feedFailures.get(channelId) ?? 0) + 1;
+            feedFailures.set(channelId, fails);
+            if (fails === 3) console.error(`[notify] YouTube feed for ${channelId} has failed 3 checks in a row:`, err.message);
             continue;
         }
-
         for (const sub of channelSubs) {
             const since = sub.lastPublishedAt ?? new Date(0);
             const fresh = feed.videos
