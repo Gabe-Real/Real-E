@@ -1,8 +1,8 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags, InteractionContextType, EmbedBuilder, Colors } = require('discord.js');
-const NotifySubscription = require('../../../../../../../../../../../Documents/real-e-notify/src/main/js/dev/gabereal/cord-e/schemas/notify/notifySubscription');
-const { fetchFeed, resolveChannelId } = require('../../../../../../../../../../../Documents/real-e-notify/src/main/js/dev/gabereal/cord-e/utils/youtube');
-const { twitchConfigured, getUser, getLiveStreams } = require('../../../../../../../../../../../Documents/real-e-notify/src/main/js/dev/gabereal/cord-e/utils/twitch');
-const { sendAlert, DEFAULT_MESSAGES } = require('../../../../../../../../../../../Documents/real-e-notify/src/main/js/dev/gabereal/cord-e/utils/notifyPoller');
+const NotifySubscription = require('../../schemas/notify/notifySubscription');
+const { fetchFeed, resolveChannelId } = require('../../utils/youtube');
+const { twitchConfigured, getUser, getLiveStreams } = require('../../utils/twitch');
+const { sendAlert, DEFAULT_MESSAGES } = require('../../utils/notifyPoller');
 
 const MAX_PER_SERVER = 25;
 const ALERT_CHANNELS = [ChannelType.GuildText, ChannelType.GuildAnnouncement];
