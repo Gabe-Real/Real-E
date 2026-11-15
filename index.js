@@ -11,6 +11,7 @@ const { handleQuickTag } = require('./src/main/js/dev/gabereal/cord-e/handlers/c
 const { startChristmasStatus } = require('./src/main/js/dev/gabereal/cord-e/handlers/events/christmasStatus');
 const { startTempBanWatcher } = require('./src/main/js/dev/gabereal/cord-e/utils/tempBans');
 const { startNotifyPoller } = require('./src/main/js/dev/gabereal/cord-e/utils/notifyPoller');
+const { setupLogParser } = require('./src/main/js/dev/gabereal/cord-e/modules/logparser');
 
 
 // ENVIRONMENT VARIABLES
@@ -303,6 +304,7 @@ client.once(Events.ClientReady, c => {
     startChristmasStatus(c);
     startTempBanWatcher(c);
     startNotifyPoller(c);
+    setupLogParser(c);
 });
 
 (async () => {
