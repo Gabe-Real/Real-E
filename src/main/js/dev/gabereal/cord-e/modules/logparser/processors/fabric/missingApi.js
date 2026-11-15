@@ -22,6 +22,9 @@ module.exports = {
                 .join('\n');
             return `**» Missing:** \`${m[1]}\`\nNeeded by:\n${mods}`;
         });
-        log.addProblem('**Some mods are missing required APIs or mods:**\n' + problems.join('\n\n'));
+        log.addProblem(
+            '**Some mods are missing required APIs or mods:**\n' + problems.join('\n\n') + '\n' +
+            '**How to fix it:** download the missing mod for your Minecraft version and put it in your mods folder.'
+        );
     },
 };

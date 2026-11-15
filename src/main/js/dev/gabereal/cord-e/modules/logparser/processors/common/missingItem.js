@@ -1,4 +1,5 @@
 const { Order } = require('../../constants');
+const { describePackage, setupText } = require('../../help');
 
 // Classes, methods or fields that weren't found: almost always a missing (or wrong version of a) dependency.
 const CLASS = /java\.lang\.ClassNotFoundException: ((?:[^\n.]+[./])*)([^\n.()]+)/gi;
@@ -8,7 +9,7 @@ const FIELD = /java\.lang\.NoSuchFieldError: Class ((?:[^\n.]+[./])*)([^\n.()]+)
 const NO_CLASS_DEF = /java\.lang\.NoClassDefFoundError: (?!Could not initialize)((?:[^\n.]+[./])*)([^\n.()\s]+)/gi;
 
 // JDK/library packages that aren't useful to report.
-const IGNORED = ['org.jetbrains.', 'java.', 'javax.', 'kotlin.', 'sun.', 'com.intellij.', 'com.google.', 'jdk.', 'org.slf4j.', 'org.apache.'];
+const IGNORED = ['org.jetbrains.', 'java.', 'javax.', 'sun.', 'com.intellij.', 'com.google.', 'jdk.', 'org.slf4j.', 'org.apache.'];
 
 module.exports = {
     id: 'missing-jvm-elements',
@@ -29,15 +30,25 @@ module.exports = {
         for (const m of log.content.matchAll(FIELD)) add(m[1], m[2]);
 
         if (packages.size) {
+            const setup = setupText(log);
             log.addProblem(
                 '**Some packages did not contain all required classes, fields, or methods. This is usually caused by a missing dependency.**\n' +
-                [...packages].slice(0, 10).map(p => `- \`${p}\``).join('\n')
+                [...packages].slice(0, 8).map(p => `- ${describePackage(p)}`).join('\n') + '\n' +
+                '**What this means:** one of your mods tried to use code from another mod (a *dependency*) that isn\'t installed, ' +
+                'or is installed in the wrong version.\n' +
+                `**How to fix it:** install the mods listed above${setup ? ` ${setup}` : ''}, or update them if you already have them. ` +
+                'Every mod\'s download page lists what else it needs under **Dependencies**.' +
+                ([...packages].some(p => p.startsWith('net.minecraft.') || p.startsWith('com.mojang.'))
+                    ? `\nSince Minecraft itself is listed, also check that **every mod is made for Minecraft \`${log.minecraftVersion ?? 'your version'}\`**.`
+                    : '')
             );
         }
         if (topLevel.size) {
             log.addProblem(
                 '**Some top-level classes were not found or were missing fields or methods. This is usually caused by a missing dependency.**\n' +
-                [...topLevel].slice(0, 10).map(c => `- \`${c}\``).join('\n')
+                [...topLevel].slice(0, 10).map(c => `- \`${c}\``).join('\n') + '\n' +
+                '**What this means:** a mod is missing another mod it needs, or two mods are different versions than they expect. ' +
+                'Check each mod\'s **Dependencies** on its download page.'
             );
         }
     },

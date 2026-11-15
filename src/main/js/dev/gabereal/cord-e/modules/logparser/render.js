@@ -1,4 +1,4 @@
-const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+const { ContainerBuilder, TextDisplayBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const { Colors, LOADER_NAMES } = require('./constants');
 
 // Components V2 lets a whole message hold 4000 characters of text.
@@ -36,46 +36,39 @@ function trim(text, max) {
     return text.length > max ? text.slice(0, max - 6) + '\n[...]' : text;
 }
 
-/** One coloured box per log: green = fine, yellow = problems found, red = aborted. */
+/** One coloured box per log, laid out like Cozy's embeds: green = fine, yellow = problems found, red = aborted. */
 function logContainer(log, budget) {
     const color = log.aborted ? Colors.Red : log.hasProblems ? Colors.Yellow : Colors.Green;
-    const kind = log.isCrashReport ? '💥 Crash Report' : '📄 Log File';
+    const kind = log.content.startsWith('---- Crashed! ----') ? 'Crash Log' : 'Log File';
     const status = log.aborted ? ': Aborted' : log.hasProblems ? ': Problems Found' : '';
-    const source = log.source.startsWith('http') ? `<${log.source}>` : log.source;
 
-    const header = `## ${kind}${status}\n-# ${source}`;
-    const env = `### 🖥️ Environment\n${environmentText(log)}`;
-    const body = log.aborted
-        ? `### ⛔ Log parsing aborted\n${log.abortReason}`
-        : log.messages.length ? `### 💬 Messages\n${log.messages.join('\n\n')}` : null;
-
-    const container = new ContainerBuilder().setAccentColor(color);
+    const header = `### ${kind}${status}`;
     let remaining = budget - header.length;
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(header));
 
-    // When aborted, the environment isn't relevant (Cozy shows it, but it's mostly noise).
-    if (!log.aborted) {
-        const envText = trim(env, Math.max(200, Math.floor(remaining / 2)));
-        remaining -= envText.length;
-        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(envText));
-    }
-
-    if (body) {
-        container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-        const bodyText = trim(body, Math.max(200, remaining));
-        remaining -= bodyText.length;
-        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(bodyText));
+    const blocks = [];
+    if (log.aborted) {
+        blocks.push(`__**Messages**__\n\n__**Log parsing aborted**__\n${log.abortReason}`);
+    } else {
+        const env = trim(`__**Environment Info**__\n\n${environmentText(log)}`, Math.max(200, Math.floor(remaining / 2)));
+        remaining -= env.length;
+        blocks.push(env);
+        if (log.messages.length) {
+            const messages = trim(`__**Messages**__\n\n${log.messages.join('\n\n')}`, Math.max(200, remaining));
+            remaining -= messages.length;
+            blocks.push(messages);
+        }
     }
 
     for (const section of log.sections) {
         if (remaining < 200) break;
-        const text = trim(`### ${section.title}\n${section.text}`, remaining);
+        const text = trim(`__**${section.title}**__\n\n${section.text}`, remaining);
         remaining -= text.length;
-        container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(text));
+        blocks.push(text);
     }
 
-    return container;
+    return new ContainerBuilder()
+        .setAccentColor(color)
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${header}\n${blocks.join('\n\n')}`));
 }
 
 /**
@@ -87,11 +80,11 @@ function renderLog(log, { uploadId, mclogsUrl } = {}) {
 
     if (mclogsUrl) {
         components.push(new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(mclogsUrl).setLabel('View on mclo.gs').setEmoji('🏓')
+            new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(mclogsUrl).setLabel('View on mclo.gs')
         ));
     } else if (uploadId) {
         components.push(new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`logparser:upload:${uploadId}`).setStyle(ButtonStyle.Secondary).setLabel('Upload to mclo.gs').setEmoji('📤')
+            new ButtonBuilder().setCustomId(`logparser:upload:${uploadId}`).setStyle(ButtonStyle.Secondary).setLabel('Upload to mclo.gs')
         ));
     }
 

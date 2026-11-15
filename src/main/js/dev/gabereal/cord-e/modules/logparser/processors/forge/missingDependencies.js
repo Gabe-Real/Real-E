@@ -1,4 +1,5 @@
 const { Order } = require('../../constants');
+const { setupText, modrinth } = require('../../help');
 
 /**
  * Forge and NeoForge both list missing dependencies. Formats:
@@ -27,8 +28,13 @@ module.exports = {
 
         const lines = [...deps].slice(0, 10).map(([mod, d]) => {
             const have = /missing|not installed/i.test(d.have) ? '**not installed**' : `you have \`${d.have}\``;
-            return `- \`${mod}\` (needs \`${d.needed}\`, ${have}) for ${[...d.by].map(b => `\`${b}\``).join(', ')}`;
+            return `- [\`${mod}\`](${modrinth(mod)}) (needs \`${d.needed}\`, ${have}) for ${[...d.by].map(b => `\`${b}\``).join(', ')}`;
         });
-        log.addProblem('**Some mods are missing dependencies or have the wrong version:**\n' + lines.join('\n'));
+        const setup = setupText(log);
+        log.addProblem(
+            '**Some mods are missing dependencies or have the wrong version:**\n' + lines.join('\n') + '\n' +
+            `**How to fix it:** download the mods listed above${setup ? ` ${setup}` : ''}, in the version shown after "needs", ` +
+            'and put them in your mods folder. Click a name to search for it on Modrinth.'
+        );
     },
 };

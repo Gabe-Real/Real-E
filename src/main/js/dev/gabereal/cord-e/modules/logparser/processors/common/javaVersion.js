@@ -19,7 +19,9 @@ module.exports = {
         log.addProblem(
             '**It looks like you need to update Java.** ' +
             `You have Java \`${javaFor(current) ?? `class version ${current}`}\` installed, ` +
-            `but you need Java \`${javaFor(required) ?? `class version ${required}`}\` or later.`
+            `but you need Java \`${javaFor(required) ?? `class version ${required}`}\` or later.\n` +
+            `**How to fix it:** install Java ${javaFor(required) ?? 'the newer version'} (for example from [Adoptium](https://adoptium.net/temurin/releases/)) ` +
+            'and pick it in your launcher\'s Java settings. Prism Launcher, the Modrinth App and the official launcher can also download the right Java for you.'
         );
     },
 };

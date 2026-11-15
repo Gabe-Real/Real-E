@@ -1,4 +1,5 @@
 const { Order } = require('../../constants');
+const { modrinth } = require('../../help');
 
 /**
  * Fabric Loader 0.14+ explains dependency problems itself:
@@ -39,7 +40,9 @@ module.exports = {
         const uniqueDetails = [...new Set(details)];
 
         const parts = ['**Some of your mods are incompatible with the game or each other.**'];
-        if (fixes.length) parts.push('**Suggested fix:**\n' + fixes.slice(0, 8).map(f => `- ${f}`).join('\n'));
+        // Link "Install fabric-api, any version." straight to a search for that mod.
+        const linked = fixes.map(f => f.replace(/^Install ([\w\-.]+)/i, (_, id) => `Install [${id}](${modrinth(id)})`));
+        if (fixes.length) parts.push('**Suggested fix** (Fabric worked this out for you, so start here):\n' + linked.slice(0, 8).map(f => `- ${f}`).join('\n'));
         if (uniqueDetails.length) {
             parts.push('**Details:**\n' + uniqueDetails.slice(0, 8).map(d => `- ${d}`).join('\n') +
                 (uniqueDetails.length > 8 ? `\n-# ...and ${uniqueDetails.length - 8} more` : ''));

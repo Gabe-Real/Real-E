@@ -1,4 +1,5 @@
 const { Order } = require('../../constants');
+const { setupText } = require('../../help');
 
 /**
  * Crash reports have a "-- MOD modid --" section for every mod that failed to load, with the cause.
@@ -25,6 +26,11 @@ module.exports = {
             const short = cause && cause.length > 150 ? cause.slice(0, 147) + '...' : cause;
             return `- \`${id}\`${short ? `: \`${short}\`` : ''}`;
         });
-        log.addProblem('**These mods failed to load:**\n' + lines.join('\n'));
+        const setup = setupText(log);
+        log.addProblem(
+            '**These mods failed to load:**\n' + lines.join('\n') + '\n' +
+            `**How to fix it:** update these mods and make sure they\'re made${setup ? ` ${setup}` : ' for your Minecraft version and loader'}. ` +
+            'If one keeps failing, remove it to check it\'s the cause, then report it to the mod\'s author.'
+        );
     },
 };
