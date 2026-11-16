@@ -27,6 +27,8 @@ function statusText(days) {
 }
 
 async function updateStatus(client) {
+    // A dev set a custom status with /reale dev, so leave it alone until they reset it.
+    if (client.statusOverride) return;
     let days = localDaysLeft();
     if (days !== 0) {
         try {
@@ -47,4 +49,4 @@ function startChristmasStatus(client) {
     setInterval(() => updateStatus(client), 60 * 60 * 1000);
 }
 
-module.exports = { startChristmasStatus };
+module.exports = { startChristmasStatus, updateStatus };

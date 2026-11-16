@@ -1,14 +1,17 @@
 const { SlashCommandBuilder, InteractionContextType } = require('discord.js');
 const access = require('../../modules/access');
-const { views, isOwner, allowlistView } = access;
+const { views, allowlistView } = access;
+const roles = require('../../modules/staff/roles');
 const { text, v2 } = views;
 
-const ownerOnly = (interaction) => interaction.reply(v2([text('## 🔒 Owner only\n-# Only Real-E\'s owner can manage access requests')], true));
+const denied = (interaction, level) => interaction.reply(v2([text(`## 🔒 ${roles.LABEL[level]} only\n-# You need Real-E ${roles.LABEL[level].toLowerCase()} access for this`)], true));
+// Viewing is for staff; changing anything needs management.
+const NEEDS = { board: 'staff', allowlist: 'staff', panel: 'management', allow: 'management', revoke: 'management' };
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('requests')
-        .setDescription('Manage who can use Real-E (owner only)')
+        .setDescription('Manage who can use Real-E (Real-E staff only)')
         .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM)
         .addSubcommand(sub => sub.setName('board').setDescription('Review access requests'))
         .addSubcommand(sub => sub.setName('panel').setDescription('Post a "Request Real-E" button in this channel'))
@@ -23,8 +26,8 @@ module.exports = {
                 .addStringOption(o => o.setName('server').setDescription('Start typing a server name').setRequired(true).setAutocomplete(true))),
 
     async execute(interaction) {
-        if (!isOwner(interaction.user.id)) return ownerOnly(interaction);
         const sub = interaction.options.getSubcommand();
+        if (!(await roles.has(interaction.user.id, NEEDS[sub]))) return denied(interaction, NEEDS[sub]);
 
         if (sub === 'board') return interaction.reply(v2(await views.board('pending', 1), true));
 
@@ -53,7 +56,7 @@ module.exports = {
 
     // Server picker for /requests revoke: allowed servers + servers Real-E is in.
     async autocomplete(interaction) {
-        if (!isOwner(interaction.user.id)) return interaction.respond([]);
+        if (!(await roles.has(interaction.user.id, 'management'))) return interaction.respond([]);
         const typed = interaction.options.getFocused().toLowerCase();
         const guilds = [...interaction.client.guilds.cache.values()];
         await interaction.respond(guilds
@@ -74,7 +77,8 @@ module.exports = {
         const [, action, a, b] = interaction.customId.split(':');
 
         if (action === 'new') return interaction.showModal(views.requestModal());
-        if (!isOwner(interaction.user.id)) return ownerOnly(interaction);
+        const need = action === 'review' ? 'management' : 'staff';
+        if (!(await roles.has(interaction.user.id, need))) return denied(interaction, need);
 
         if (action === 'open') return interaction.reply(v2(await views.board('pending', 1), true));
         if (action === 'tab') return interaction.update(v2(await views.board(a, Number(b))));

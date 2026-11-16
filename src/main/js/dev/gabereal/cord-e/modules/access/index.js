@@ -9,7 +9,8 @@
 const crypto = require('node:crypto');
 const { Events, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { AccessRequest, AllowedGuild } = require('./schemas');
-const { loadOwners, isOwner, getOwners } = require('./owner');
+const roles = require('../staff/roles');
+const banned = require('../staff/banned');
 const { inviteFor, requestUrl } = require('./links');
 const views = require('./views');
 const { text, divider, v2 } = views;
@@ -37,7 +38,9 @@ const isAllowed = (guildId) => allowed.has(guildId) || guildId === process.env.T
 
 /** DM every owner. Never throws. */
 async function notifyOwners(client, payload) {
-    for (const id of getOwners()) {
+    // Devs and management hear about requests and unapproved servers.
+    const { dev, management } = await roles.listAll().catch(() => ({ dev: roles.devIds(), management: [] }));
+    for (const id of new Set([...dev, ...management])) {
         try {
             const user = await client.users.fetch(id);
             await user.send(payload);
@@ -63,7 +66,8 @@ async function dm(client, userId, payload) {
 function setupAccess(client) {
     client.once(Events.ClientReady, async () => {
         try {
-            await loadOwners(client);
+            await roles.loadAppOwners(client);
+            await banned.load();
             await refreshAllowlist();
 
             // First run: everything Real-E is already in is allowed, so nothing gets kicked out.
@@ -79,7 +83,7 @@ function setupAccess(client) {
                     strays.map(g => `- **${g.name}** \`${g.id}\``).join('\n') +
                     '\n-# Use `/requests allow` to keep them, or `/requests revoke` to leave')]));
             }
-            console.log(`[access] Ready. ${allowed.size} allowed servers, owners: ${getOwners().join(', ') || 'none found'}`);
+            console.log(`[access] Ready. ${allowed.size} allowed servers, devs: ${roles.devIds().join(', ') || 'none found'}`);
         } catch (err) {
             console.error('[access] Setup failed:', err);
         }
@@ -87,11 +91,14 @@ function setupAccess(client) {
 
     // Someone added Real-E to a server that wasn't approved: explain, tell the owner, and leave.
     client.on(Events.GuildCreate, async (guild) => {
-        if (isAllowed(guild.id)) return;
+        const isBanned = await banned.isBanned(guild.id);
+        if (isAllowed(guild.id) && !isBanned) return;
         try {
             const message = v2([
-                text(`## 🔒 Real-E is a private bot\nIt's only available in approved servers, so I've left **${guild.name}**.\n` +
-                    `-# Want it here? Ask for access in Gabe_Real's server: ${requestUrl()}`),
+                text(isBanned
+                    ? `## 🚫 Real-E can't be used in ${guild.name}\n-# This server has been blocked from using Real-E`
+                    : `## 🔒 Real-E is a private bot\nIt's only available in approved servers, so I've left **${guild.name}**.\n` +
+                      `-# Want it here? Ask for access in Gabe_Real's server: ${requestUrl()}`),
             ]);
             const owner = await guild.fetchOwner().catch(() => null);
             if (!owner || !(await owner.send(message).then(() => true).catch(() => false))) {
@@ -122,6 +129,7 @@ async function submitRequest(interaction) {
     if (!invite?.guild) return say('🔗 That invite didn\'t work', 'It might have expired. Make a permanent one and try again');
 
     const guildId = invite.guild.id;
+    if (await banned.isBanned(guildId)) return say('🚫 That server can\'t request Real-E', 'It has been blocked by Real-E\'s staff');
     if (isAllowed(guildId)) return say('✅ That server already has access', `Real-E is approved for **${invite.guild.name}**`);
     if (await AccessRequest.exists({ guildId, status: 'pending' })) {
         return say('⏳ Already waiting', `There's already a request for **${invite.guild.name}**. You'll get a DM when it's reviewed`);
@@ -152,7 +160,9 @@ async function submitRequest(interaction) {
 
 /** Handle the ✏️ review pop-up: save, tell the requester, update the allowlist, refresh the board. */
 async function reviewRequest(interaction) {
-    if (!isOwner(interaction.user.id)) return interaction.reply(v2([text('## 🔒 Owner only')], true));
+    if (!(await roles.has(interaction.user.id, 'management'))) {
+        return interaction.reply(v2([text('## 🔒 Management only\n-# Staff can view requests, but only management can approve or deny them')], true));
+    }
 
     const requestId = interaction.customId.split(':')[2];
     const request = await AccessRequest.findOne({ requestId });
@@ -221,4 +231,4 @@ async function allowlistView(client) {
     ];
 }
 
-module.exports = { setupAccess, submitRequest, reviewRequest, revoke, allow, isAllowed, allowlistView, isOwner, views };
+module.exports = { setupAccess, submitRequest, reviewRequest, revoke, allow, disallow, isAllowed, allowlistView, notifyOwners, views };
