@@ -88,7 +88,7 @@ npm start
 index.js                  Starts everything: loads commands, events and modules
 start.js                  Deploys commands, then runs index.js
 deploy-commands.js        Registers slash commands with Discord
-src/main/js/dev/gabereal/cord-e/
+src/main/js/dev/gabereal/real-e/
 ├── commands/             One folder per category, one file per command
 ├── handlers/             Events, buttons and modal (pop-up) handlers
 ├── modules/              Bigger self-contained features

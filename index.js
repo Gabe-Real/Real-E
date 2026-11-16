@@ -2,17 +2,17 @@ const { Client, Collection, Events, GatewayIntentBits, MessageFlags, Partials, E
 const fs = require('node:fs');
 const path = require('node:path');
 const mongoose = require('mongoose');
-const WelcomeConfig = require('./src/main/js/dev/gabereal/cord-e/schemas/welcome/welcome');
-const autocompleteHandler = require('./src/main/js/dev/gabereal/cord-e/handlers/events/autocompleteHandler');
-const cordboard = require('./src/main/js/dev/gabereal/cord-e/commands/cordboard/cordboard');
-const antiReplyHandler = require('./src/main/js/dev/gabereal/cord-e/handlers/commands/replyping');
-const MsglogConfig = require('./src/main/js/dev/gabereal/cord-e/schemas/logging/msglogs');
-const { handleQuickTag } = require('./src/main/js/dev/gabereal/cord-e/handlers/commands/quickTags');
-const { startChristmasStatus } = require('./src/main/js/dev/gabereal/cord-e/handlers/events/christmasStatus');
-const { startTempBanWatcher } = require('./src/main/js/dev/gabereal/cord-e/utils/tempBans');
-const { startNotifyPoller } = require('./src/main/js/dev/gabereal/cord-e/utils/notifyPoller');
-const { setupLogParser } = require('./src/main/js/dev/gabereal/cord-e/modules/logparser');
-const { setupAccess } = require('./src/main/js/dev/gabereal/cord-e/modules/access');
+const WelcomeConfig = require('./src/main/js/dev/gabereal/real-e/schemas/welcome/welcome');
+const autocompleteHandler = require('./src/main/js/dev/gabereal/real-e/handlers/events/autocompleteHandler');
+const cordboard = require('./src/main/js/dev/gabereal/real-e/commands/cordboard/cordboard');
+const antiReplyHandler = require('./src/main/js/dev/gabereal/real-e/handlers/commands/replyping');
+const MsglogConfig = require('./src/main/js/dev/gabereal/real-e/schemas/logging/msglogs');
+const { handleQuickTag } = require('./src/main/js/dev/gabereal/real-e/handlers/commands/quickTags');
+const { startChristmasStatus } = require('./src/main/js/dev/gabereal/real-e/handlers/events/christmasStatus');
+const { startTempBanWatcher } = require('./src/main/js/dev/gabereal/real-e/utils/tempBans');
+const { startNotifyPoller } = require('./src/main/js/dev/gabereal/real-e/utils/notifyPoller');
+const { setupLogParser } = require('./src/main/js/dev/gabereal/real-e/modules/logparser');
+const { setupAccess } = require('./src/main/js/dev/gabereal/real-e/modules/access');
 
 
 // ENVIRONMENT VARIABLES
@@ -164,10 +164,10 @@ client.on(Events.MessageDelete, safe('messageDelete', async (msg) => {
 client.commands = new Collection();
 client.modals = new Collection();
 
-const foldersPath = path.join(__dirname, 'src/main/js/dev/gabereal/cord-e/commands');
+const foldersPath = path.join(__dirname, 'src/main/js/dev/gabereal/real-e/commands');
 const commandFolders = fs.readdirSync(foldersPath);
-const modalFiles = fs.readdirSync(path.join(__dirname, 'src/main/js/dev/gabereal/cord-e/handlers/modals')).filter(file => file.endsWith('.js'));
-const eventsPath = path.join(__dirname, 'src/main/js/dev/gabereal/cord-e/handlers/events');
+const modalFiles = fs.readdirSync(path.join(__dirname, 'src/main/js/dev/gabereal/real-e/handlers/modals')).filter(file => file.endsWith('.js'));
+const eventsPath = path.join(__dirname, 'src/main/js/dev/gabereal/real-e/handlers/events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
 for (const folder of commandFolders) {
@@ -185,7 +185,7 @@ for (const folder of commandFolders) {
 }
 
 for (const file of modalFiles) {
-    const modal = require(`./src/main/js/dev/gabereal/cord-e/handlers/modals/${file}`);
+    const modal = require(`./src/main/js/dev/gabereal/real-e/handlers/modals/${file}`);
     client.modals.set(modal.customId, modal);
 }
 

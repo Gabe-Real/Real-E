@@ -12,7 +12,7 @@ if (!clientId || !token || !guildId) {
 }
 
 const commands = [];
-const foldersPath = path.join(__dirname, 'src/main/js/dev/gabereal/cord-e/commands');
+const foldersPath = path.join(__dirname, 'src/main/js/dev/gabereal/real-e/commands');
 const commandFolders = fs.readdirSync(foldersPath);
 
 for (const folder of commandFolders) {
