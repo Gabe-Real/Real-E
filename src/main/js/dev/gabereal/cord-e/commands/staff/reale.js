@@ -7,14 +7,16 @@ const management = require('../../modules/staff/actions/management');
 const dev = require('../../modules/staff/actions/dev');
 
 // Each tier and the level needed to use it. Higher tiers can use everything below them.
+// Actions whose replies only the person running them sees. Everything else is posted publicly.
+const PRIVATE = new Set(['invite', 'logs', 'evaluate']);
+
 const TIERS = { staff: { level: 'staff', ...staff }, management: { level: 'management', ...management }, dev: { level: 'dev', ...dev } };
 
 const action = (choices) => (o) => o.setName('action').setDescription('Choose an action').setRequired(true)
     .addChoices(...choices.map(([name, value]) => ({ name, value })));
 const guildId = (o) => o.setName('guild_id').setDescription('Server (start typing its name, or paste an ID)').setAutocomplete(true);
 const userId = (o) => o.setName('user_id').setDescription('User ID');
-const channelId = (o) => o.setName('channel_id').setDescription('Channel ID');
-const textOpt = (o) => o.setName('text').setDescription('Text (use \\n for new lines)').setMaxLength(2000);
+const textOpt = (o) => o.setName('text').setDescription('Ban reason (management) / code or status text (dev)').setMaxLength(2000);
 const toggle = (o) => o.setName('toggle').setDescription('On or off');
 
 module.exports = {
@@ -28,7 +30,7 @@ module.exports = {
             .addStringOption(action(staff.choices)).addStringOption(guildId))
         .addSubcommand(sub => sub.setName('management').setDescription('Management actions')
             .addStringOption(action(management.choices)).addStringOption(guildId).addStringOption(userId)
-            .addStringOption(channelId).addStringOption(textOpt).addBooleanOption(toggle))
+            .addStringOption(textOpt).addBooleanOption(toggle))
         .addSubcommand(sub => sub.setName('dev').setDescription('Developer actions')
             .addStringOption(action(dev.choices)).addStringOption(userId).addBooleanOption(toggle).addStringOption(textOpt)
             .addStringOption(o => o.setName('status').setDescription('Online status').addChoices(
@@ -50,11 +52,13 @@ module.exports = {
         }
 
         const result = await tier.actions[name](interaction);
-        if (result?.modal) await interaction.showModal(result.modal);
-        else await interaction.reply(result);
+        // Public unless it's a private action or an error/"fill this in" message.
+        const { private: isError, ...payload } = result;
+        if (!PRIVATE.has(name) && !isError) payload.flags &= ~MessageFlags.Ephemeral;
+        await interaction.reply(payload);
 
         // Logged after replying, so a slow database can't make Discord time out.
-        const details = ['guild_id', 'user_id', 'channel_id'].map(k => interaction.options.getString(k) && `${k}: ${interaction.options.getString(k)}`).filter(Boolean).join(', ');
+        const details = ['guild_id', 'user_id'].map(k => interaction.options.getString(k) && `${k}: ${interaction.options.getString(k)}`).filter(Boolean).join(', ');
         await logAction(interaction.client, { userId: interaction.user.id, level, action: `${tier.level} ${name}`, details });
     },
 

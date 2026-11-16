@@ -2,7 +2,7 @@
 const util = require('node:util');
 const { ActivityType, version: djsVersion } = require('discord.js');
 const roles = require('../roles');
-const { card } = require('../ui');
+const { card, oops } = require('../ui');
 const { updateStatus } = require('../../../handlers/events/christmasStatus');
 
 const ACTIVITY = {
@@ -23,8 +23,8 @@ const actions = {
     async toggle_management(ctx) {
         const userId = ctx.options.getString('user_id')?.trim();
         const on = ctx.options.getBoolean('toggle');
-        if (!userId || on === null) return card('✏️ Missing details', 'Needs `user_id` and `toggle`');
-        if (roles.devIds().includes(userId)) return card('🔒 That\'s a developer', 'Developers are set in `.env`');
+        if (!userId || on === null) return oops('✏️ Missing details', 'Needs `user_id` and `toggle`');
+        if (roles.devIds().includes(userId)) return oops('🔒 That\'s a developer', 'Developers are set in `.env`');
         await roles.setLevel(userId, on ? 'management' : 'none', ctx.user.id);
         return card(on ? '🔐 Management access given' : '🔐 Management access removed', `<@${userId}> \`${userId}\``);
     },
@@ -61,7 +61,7 @@ const actions = {
 
     async evaluate(ctx) {
         const code = ctx.options.getString('text');
-        if (!code) return card('✏️ Missing code', 'Put JavaScript in `text`. `client` and `interaction` are available');
+        if (!code) return oops('✏️ Missing code', 'Put JavaScript in `text`. `client` and `interaction` are available');
         const started = performance.now();
         let output;
         try {

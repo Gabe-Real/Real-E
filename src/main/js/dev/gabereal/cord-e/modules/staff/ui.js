@@ -10,6 +10,8 @@ const reply = (components, { ephemeral = true } = {}) => ({
 });
 /** "## Title" + "-# sub" + optional body, as a private reply. */
 const card = (title, sub, body) => reply([text(`## ${title}${sub ? `\n-# ${sub}` : ''}`), ...(body ? [divider(), text(body)] : [])]);
+/** A private error/"fill this in" reply. Never posted publicly, even from commands that reply publicly. */
+const oops = (title, sub) => ({ ...card(title, sub), private: true });
 const pager = (prefix, page, pages) => new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`${prefix}:${page - 1}`).setEmoji('◀️').setStyle(ButtonStyle.Secondary).setDisabled(page <= 1),
     new ButtonBuilder().setCustomId(`${prefix}:noop:${page}`).setLabel(`Page ${page}/${pages}`).setStyle(ButtonStyle.Secondary).setDisabled(true),
@@ -17,4 +19,4 @@ const pager = (prefix, page, pages) => new ActionRowBuilder().addComponents(
 );
 const ts = (date, style = 'R') => `<t:${Math.floor(new Date(date).getTime() / 1000)}:${style}>`;
 
-module.exports = { text, divider, reply, card, pager, ts };
+module.exports = { text, divider, reply, card, oops, pager, ts };

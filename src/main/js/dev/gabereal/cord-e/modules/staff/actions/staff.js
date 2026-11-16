@@ -2,8 +2,7 @@
 const { PermissionFlagsBits } = require('discord.js');
 const roles = require('../roles');
 const banned = require('../banned');
-const { text, divider, reply, card, pager, ts } = require('../ui');
-const { inviteFor } = require('../../access/links');
+const { text, divider, reply, card, oops, pager, ts } = require('../ui');
 const access = require('../../access');
 
 const PER_PAGE = 10;
@@ -14,14 +13,14 @@ const IMPORTANT = [
     ['ReadMessageHistory', 'reply to messages'], ['AddReactions', 'reactions & cordboard'], ['UseExternalEmojis', 'custom emojis'],
     ['ManageMessages', 'pins & cleanup'], ['ModerateMembers', '/mute'], ['KickMembers', '/kick'], ['BanMembers', '/ban'],
     ['ManageRoles', 'reaction roles'], ['ManageChannels', '/slowmode, tickets'], ['ManageNicknames', '/botprofile nickname'],
-    ['ChangeNickname', 'own nickname'],
+    ['ChangeNickname', 'own nickname'], ['CreateInstantInvite', 'staff invite links'],
 ];
 
 function getGuild(ctx) {
     const id = ctx.options.getString('guild_id');
-    if (!id) return { error: card('🆔 Needs a server', 'Fill in `guild_id` (start typing a server name)') };
+    if (!id) return { error: oops('🆔 Needs a server', 'Fill in `guild_id` (start typing a server name)') };
     const guild = ctx.client.guilds.cache.get(id);
-    if (!guild) return { error: card('🔍 Not in that server', `Real-E isn't in \`${id}\``) };
+    if (!guild) return { error: oops('🔍 Not in that server', `Real-E isn't in \`${id}\``) };
     return { guild };
 }
 
@@ -75,10 +74,18 @@ const actions = {
             lines.join('\n'));
     },
 
+    // A one-use invite so the staff member can join the server (e.g. to help out or check on it).
     async invite(ctx) {
-        const id = ctx.options.getString('guild_id');
-        if (!id || !/^\d{17,20}$/.test(id)) return card('🆔 Needs a server ID', 'Fill in `guild_id`');
-        return card('🔗 Invite link', `Locked to \`${id}\`${access.isAllowed(id) ? '' : ' · ⚠️ not on the allowlist, so Real-E would leave straight away'}`, inviteFor(ctx.client.user.id, id));
+        const { guild, error } = getGuild(ctx);
+        if (error) return error;
+        const me = guild.members.me;
+        const channel = [guild.rulesChannel, guild.systemChannel, ...guild.channels.cache.values()]
+            .find(c => c?.isTextBased?.() && !c.isThread?.() && c.permissionsFor(me)?.has(PermissionFlagsBits.CreateInstantInvite));
+        if (!channel) return oops('🔗 Can\'t make an invite', `Real-E doesn't have **Create Invite** in any channel of ${guild.name}`);
+        const invite = await channel.createInvite({ maxAge: 3600, maxUses: 1, unique: true, reason: `Requested by Real-E staff member ${ctx.user.username}` })
+            .catch(() => null);
+        if (!invite) return oops('🔗 Couldn\'t make an invite', 'Discord refused. Try again in a minute');
+        return card(`🔗 Invite to ${guild.name}`, 'One use, expires in 1 hour', invite.url);
     },
 
     async servers(ctx, page = 1) {
@@ -92,20 +99,10 @@ const actions = {
         return reply(components);
     },
 
-    async popular(ctx) {
-        const top = [...ctx.client.guilds.cache.values()].sort((a, b) => b.memberCount - a.memberCount).slice(0, 10);
-        return card('🏆 Most popular servers', 'By member count',
-            top.map((g, i) => `**${i + 1}.** ${g.name} · ${g.memberCount.toLocaleString('en-GB')} members\n-# \`${g.id}\``).join('\n'));
-    },
-
     async banned(ctx) {
         const list = await banned.list();
         return card('🚫 Banned servers', `${list.length} server${list.length === 1 ? '' : 's'} can't use Real-E`,
             list.map(b => `- **${b.guildName ?? 'Unknown'}** \`${b.guildId}\`\n-# ${b.reason ?? 'No reason'} · by <@${b.bannedBy}> ${ts(b.createdAt)}`).join('\n') || '-# none');
-    },
-
-    async requests() {
-        return reply(await access.views.board('pending', 1));
     },
 };
 
@@ -114,11 +111,9 @@ const choices = [
     ['🔍 View information about a server Real-E is in (guild_id)', 'guild_info'],
     ['🤖 View bots in a server Real-E is in (guild_id)', 'guild_bots'],
     ['🚧 Debug Real-E\'s permissions in a server (guild_id)', 'guild_perms'],
-    ['🔗 Generate invite link (guild_id)', 'invite'],
+    ['🔗 Get an invite to join a server Real-E is in (guild_id)', 'invite'],
     ['📁 List all servers Real-E is in (paginated)', 'servers'],
-    ['🏆 Find the most popular servers Real-E is in', 'popular'],
     ['🚫 List of banned servers', 'banned'],
-    ['📨 View access requests', 'requests'],
 ];
 
 module.exports = { actions, choices };
