@@ -12,6 +12,7 @@ const { startChristmasStatus } = require('./src/main/js/dev/gabereal/cord-e/hand
 const { startTempBanWatcher } = require('./src/main/js/dev/gabereal/cord-e/utils/tempBans');
 const { startNotifyPoller } = require('./src/main/js/dev/gabereal/cord-e/utils/notifyPoller');
 const { setupLogParser } = require('./src/main/js/dev/gabereal/cord-e/modules/logparser');
+const { setupAccess } = require('./src/main/js/dev/gabereal/cord-e/modules/access');
 
 
 // ENVIRONMENT VARIABLES
@@ -298,6 +299,9 @@ client.on(Events.MessageCreate, safe('messageCreate', async message => {
     await antiReplyHandler.handle(client, message);
     await handleQuickTag(message);
 }));
+
+// Private bot: only approved servers (see modules/access).
+setupAccess(client);
 
 client.once(Events.ClientReady, c => {
     console.log(`Logged in as ${c.user.username}`);
